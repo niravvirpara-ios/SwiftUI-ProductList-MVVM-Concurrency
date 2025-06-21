@@ -8,6 +8,8 @@ DerivedData/
 *.xccheckout
 *.xcodeproj/project.xcworkspace/xcuserdata
 
+xcdebugger/
+
 # SwiftPM
 .build/
 Packages/

@@ -6,31 +6,103 @@
 //
 
 import XCTest
+import Combine
 @testable import SwiftUIProductListMVVM
 
 final class SwiftUIProductListMVVMTests: XCTestCase {
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+    private var viewModel: ProductListViewModel!
+    private var mockService: MockAPIService!
+    private var bookmarkService: BookmarkService!
+    private var cancellables: Set<AnyCancellable> = []
+ 
+    @MainActor
+    override func setUp() {
+        super.setUp()
+        mockService = MockAPIService()
+        bookmarkService = BookmarkService()
+        viewModel = ProductListViewModel(
+            bookmarkService: bookmarkService,
+            repository: ProductRepository(apiService: mockService)
+        )
+    }
+    
+    override func tearDown() {
+        viewModel = nil
+        mockService = nil
+        bookmarkService = nil
+        cancellables.removeAll()
+        super.tearDown()
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
+    @MainActor
+    func testSuccessfulLoad_shouldReturnOneProduct() {
+        // Arrange
+        mockService.shouldSucceed = true
+        let expectation = XCTestExpectation(description: "Products loaded successfully")
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-    }
+        // Act
+        viewModel.$state
+            .dropFirst()
+            .sink { state in
+                if case .loaded(let sections) = state {
+                    XCTAssertEqual(sections.count, 1)
+                    XCTAssertEqual(sections.first?.category, "beauty")
+                    XCTAssertEqual(sections.first?.products.count, 1)
+                    expectation.fulfill()
+                }
+            }
+            .store(in: &cancellables)
 
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
+        Task {
+            await viewModel.loadProducts()
         }
+        
+        // Assert
+        wait(for: [expectation], timeout: 2.0)
     }
 
+    @MainActor
+    func testFetchProductsFailure_shouldReturnErrorState() {
+        
+        // Arrange
+        mockService.shouldSucceed = false
+        let expectation = XCTestExpectation(description: "Products fetch fails and shows error")
+
+        // Act
+        viewModel.$state
+            .dropFirst()
+            .sink { state in
+                if case .error(let message) = state {
+                    XCTAssertFalse(message.isEmpty)
+                    expectation.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+
+        Task {
+            await viewModel.loadProducts()
+        }
+        
+        // Assert
+        wait(for: [expectation], timeout: 2.0)
+    }
+
+    @MainActor
+    func testToggleBookmark_shouldUpdateBookmarkState() {
+        
+        // Arrange
+        let product = mockService.mockProducts.first!
+        XCTAssertFalse(bookmarkService.isBookmarked(product: product))
+        
+        // Act
+        viewModel.toggleBookmark(for: product)
+        
+        // Assert
+        XCTAssertTrue(bookmarkService.isBookmarked(product: product))
+        
+        // Toggle again
+        viewModel.toggleBookmark(for: product)
+        XCTAssertFalse(bookmarkService.isBookmarked(product: product))
+    }
 }
