@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct SwiftUIProductListMVVMApp: App {
+    
+    let appDIContainer = AppDIContainer.shared
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
+                .environmentObject(appDIContainer.bookmarkService)
+                .environmentObject(appDIContainer)
         }
     }
 }
