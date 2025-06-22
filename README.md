@@ -30,6 +30,10 @@ Included unit tests for `ProductListViewModel`:
 - Test failure scenario
 - Test bookmark toggle behavior
 
+## 📸 Screenshots
+
+![ready (1)](https://github.com/user-attachments/assets/bc65e2e0-d38c-4bf8-bb83-78da16a95919)
+
 ## 🧑‍💻 Author
 
 **Nirav Virpara**  
